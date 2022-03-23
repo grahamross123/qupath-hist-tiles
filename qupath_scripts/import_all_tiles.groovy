@@ -1,7 +1,7 @@
 // Imports the correct annotations for a given image from a folder containing multiple geojson files.
 
 
-TILE_DIR = "/Users/rossg/Projects/importing-qupath-annotations/output/high_confidence_tiles"
+TILE_DIR = "/Users/rossg/Projects/qupath-hist-tiles/output/high_confidence_tiles"
 ALL_CLASSES = ["Top PBRM1 tiles", "Top BAP1 tiles"]
 
 
