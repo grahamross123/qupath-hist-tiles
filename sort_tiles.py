@@ -2,6 +2,8 @@ import csv
 import os
 from tqdm import tqdm
 import random
+from src.Omero import Omero
+from src.omero_credentials import USERNAME, PASSWORD, HOST
 
 # Run sort_tiles.py to take a folder of prediction tsv files and return a csv containing the
 # highest confidence tiles with the given parameters.
@@ -13,11 +15,31 @@ NUM_TILES_PER_SLIDE = 100
 PREDICTION_FOLDER = "/Users/rossg/Documents/HistSlideVis_data/models_pbrm1_bap1_no_whole_patient/omero_shufflenet_v2_x1_0_lr0.1_mag20_patch512x512_1/epoch_50_1634986138"
 OUT_FILE = "./data/tiles.csv"
 ALL_MUTATIONS = ["BAP1", "PBRM1"]
+PROJECT_ID = 355
 
 
-def read_predictions_1d(path, filename, mutation, confidence_threshold=0.99):
+def get_ground_truth_and_slide_id(all_slides, slide_name, mutation, omero):
+    for slide in all_slides:
+        if slide["name"] == slide_name:
+            slide_id = slide["id"]
+            break
+    if not slide_id:
+        return None
+    ground_truth = omero.get_ground_truth(slide_id, [mutation]).get(mutation)
+
+    if ground_truth is None or not ground_truth.isdigit():
+        print("Ground truth is not an integer")
+        return
+
+    return int(ground_truth), slide_id
+
+
+def read_predictions_1d(path, filename, mutation, all_slides, omero, confidence_threshold=0.99):
     slide_name, _ = filename.split('.ome')
     slide_tiles = []
+
+    ground_truth, slide_id = get_ground_truth_and_slide_id(all_slides, slide_name, mutation, omero)
+
     with open(path, newline='') as f:
         read_tsv = csv.reader(f, delimiter="\t")
 
@@ -53,8 +75,9 @@ def read_predictions_1d(path, filename, mutation, confidence_threshold=0.99):
                     "prediction": prediction,
                     "x_coord": j,
                     "y_coord": i,
+                    "ground_truth": ground_truth,
+                    "slide_id": slide_id
                     })
-
 
     return slide_tiles
 
@@ -92,11 +115,17 @@ def save_tiles(evaluate=True, confidence_threshold=0.99):
     prediction_files = [file for file in os.listdir(PREDICTION_FOLDER) if ".tsv" in file]
 
     top_tiles = []
+
+    omero = Omero(HOST, USERNAME, PASSWORD)
+    omero.connect()
+    omero.switch_user_group()
+    all_slides = omero.get_slide_names(PROJECT_ID)
+
     for filename in tqdm(prediction_files):
         path = os.path.join(PREDICTION_FOLDER, filename)
         for mutation in ALL_MUTATIONS:
             if mutation in filename:
-                top_tiles += read_predictions_1d(path, filename, mutation, confidence_threshold=confidence_threshold)
+                top_tiles += read_predictions_1d(path, filename, mutation, all_slides, omero, confidence_threshold=confidence_threshold)
 
     filtered_tiles = filter_tiles(top_tiles, num_tiles_per_slide=NUM_TILES_PER_SLIDE)
 

@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 TILE_SIZE = [1024, 1024]
 OUTFOLDER = "./output/high_confidence_tiles/"
-TILES_CSV = "/Users/rossg/Projects/save_tiff_tiles/tiles.csv"
+TILES_CSV = "/Users/rossg/Projects/qupath-hist-tiles/data/tiles.csv"
 SLIDE_DIMS_FILE = './data/slide_dims.json'
 
 
@@ -24,26 +24,27 @@ if __name__ == '__main__':
     for tile in tqdm(tiles):
 
         # get slide size, nrows and ncols for the current tile
-        slide_info = slide_dims[tile["name"]]
+        slide_info = slide_dims[tile["slide_name"]]
         nrows = slide_info["nrows"]
         ncols = slide_info["ncols"]
         slide_size = slide_info["size"]
         tile_size = [slide_size[0] / ncols, slide_size[1] / nrows]
 
-        name_string = f"{tile['mutation']}_{'mt' if tile['prediction'] else 'wt'}_{float(tile['confidence']):.2f}"
+        name_string = f"{tile['mutation']}_{'mt' if tile['prediction'] else 'wt'}_{float(tile['confidence']):.2f}_{'correct' if float(tile['prediction']) == float(tile['ground_truth']) else 'incorrect'}"
         tile_data = create_json_tile(
             tile["coords"],
             tile_size,
             name=name_string,
             prediction=0 if float(tile["output"]) < 0.5 else 1,
             confidence=float(tile["confidence"]),
-            class_name="Top " + tile["mutation"] + " tiles"
+            class_name="Top " + tile["mutation"] + " tiles",
+            accuracy=0 if float(tile["prediction"]) == float(tile["ground_truth"]) else 1
             )
 
-        if tile["name"] in tile_annotations:
-            tile_annotations[tile["name"]].append(tile_data)
+        if tile["slide_name"] in tile_annotations:
+            tile_annotations[tile["slide_name"]].append(tile_data)
         else:
-            tile_annotations[tile["name"]] = [tile_data]
+            tile_annotations[tile["slide_name"]] = [tile_data]
 
     # Clear the output folder
     for file in os.listdir(OUTFOLDER):

@@ -31,8 +31,14 @@ def read_tile_csv(filename):
         csvreader = csv.reader(csvfile)
         next(csvreader)  # skip the column names
         for row in csvreader:
-            tile = {"name": row[0], "confidence": row[1], "output": row[2],  "mutation": row[3], "prediction": row[4],
-                    "coords": [int(row[5]), int(row[6])]}
+            tile = {"slide_name": row[0],
+                    "confidence": float(row[1]),
+                    "output": float(row[2]),
+                    "mutation": row[3],
+                    "prediction": int(row[4]),
+                    "coords": [int(row[5]), int(row[6])],
+                    "ground_truth": int(row[7]),
+                    "slide_id": row[8]}
             tiles.append(tile)
     return tiles
 
@@ -79,7 +85,14 @@ def create_json_tile_heatmap(coords, tile_size, colour=None):
 
 
 
-def create_json_tile(coords, tile_size, name="tile", prediction="NA", confidence="NA", class_name="Other"):
+def create_json_tile(
+        coords,
+        tile_size,
+        name="tile",
+        prediction="NA",
+        confidence="NA",
+        class_name="Other",
+        accuracy=None):
     """Creates a json object with all the ROI info in a geojson format"""
     tl, tr, bl, br = coords_to_corner_pixels(coords, tile_size)
     json_object = {
@@ -111,6 +124,10 @@ def create_json_tile(coords, tile_size, name="tile", prediction="NA", confidence
                 {
                     "name": "Prediction",
                     "value": prediction
+                },
+                {
+                    "name": "Accuracy",
+                    "value": accuracy
                 }
             ]
         }
